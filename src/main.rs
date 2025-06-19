@@ -1,6 +1,9 @@
 mod db;
-use axum::{routing::get, Router};
+mod auth;
+
+use axum::{routing::{get, post}, Router};
 use crate::db::db_pool::create_db_pool;
+use crate::auth::signup_handler;
 
 async fn hello_world() -> &'static str {
     "Hello, World!"
@@ -15,6 +18,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(hello_world))
+        .route("/signup", post(signup_handler))
         .with_state(pool);
 
     let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().unwrap();

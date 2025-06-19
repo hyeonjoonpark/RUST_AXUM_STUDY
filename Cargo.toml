@@ -1,16 +1,12 @@
 [package]
 name = "axum_study"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
-axum = "0.8.4"
-dotenvy = "0.15.7"
-hyper = "1.6.0"
-serde = "1.0.219"
-serde_json = "1.0.140"
-tokio = { version = "1.45.1", features = ["full"] }
-tower = "0.5.2"
-tracing = "0.1.41"
-sqlx = { version = "0.7.4", features = ["runtime-tokio", "mysql"] }
-mysql = "26.0.0"
+axum = "0.7.4"
+tokio = { version = "1.0", features = ["full"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "mysql"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenvy = "0.15"
