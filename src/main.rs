@@ -3,7 +3,7 @@ mod auth;
 
 use axum::{routing::{get, post}, Router};
 use crate::db::db_pool::create_db_pool;
-use crate::auth::signup_handler;
+use crate::auth::auth::signup_handler;
 
 async fn hello_world() -> &'static str {
     "Hello, World!"
