@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use bcrypt::{hash, DEFAULT_COST};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignupRequest {
@@ -18,6 +19,16 @@ pub struct SignupResponse {
     message: String,
 }
 
+/**
+회원가입 핸들러
+- 회원가입 요청을 처리하고 결과를 반환합니다.
+- 비밀번호 확인 검증
+- 사용자 존재 여부 확인
+- 새 사용자 등록
+- 성공 메시지 반환
+- 실패 시 오류 메시지 반환
+@return 회원가입 결과 메시지 또는 오류 메시지
+*/
 pub async fn signup_handler(
     State(pool): State<MySqlPool>,
     Json(signup_req): Json<SignupRequest>,
@@ -51,11 +62,20 @@ pub async fn signup_handler(
         ));
     }
 
+    // 비밀번호 해시화
+    let hashed_password = hash(signup_req.password.as_bytes(), DEFAULT_COST)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("비밀번호 해시화 실패: {}", e),
+            )
+        })?;
+
     // 새 사용자 등록
     sqlx::query!(
         "INSERT INTO users (username, password) VALUES (?, ?)",
         signup_req.username,
-        signup_req.password // 실제 구현시에는 반드시 비밀번호를 해시화해야 합니다!
+        hashed_password
     )
     .execute(&pool)
     .await
