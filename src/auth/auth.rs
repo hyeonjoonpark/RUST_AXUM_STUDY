@@ -19,16 +19,28 @@ pub struct SignupResponse {
     message: String,
 }
 
-/**
-회원가입 핸들러
-- 회원가입 요청을 처리하고 결과를 반환합니다.
-- 비밀번호 확인 검증
-- 사용자 존재 여부 확인
-- 새 사용자 등록
-- 성공 메시지 반환
-- 실패 시 오류 메시지 반환
-@return 회원가입 결과 메시지 또는 오류 메시지
-*/
+/// 회원가입 요청을 처리하는 핸들러 함수입니다.
+///
+/// # 기능
+/// - 회원가입 요청을 처리하고 결과를 반환합니다.
+/// - 비밀번호 확인 검증을 수행합니다.
+/// - 사용자 존재 여부를 확인합니다.
+/// - 비밀번호를 bcrypt로 해시화합니다.
+/// - 새 사용자를 데이터베이스에 등록합니다.
+///
+/// # Arguments
+/// * `pool` - MySQL 데이터베이스 연결 풀
+/// * `signup_req` - 회원가입 요청 데이터
+///
+/// # Returns
+/// * `Ok(Json<SignupResponse>)` - 회원가입 성공 시 성공 메시지
+/// * `Err((StatusCode, String))` - 실패 시 에러 코드와 에러 메시지
+///
+/// # Errors
+/// - 비밀번호가 일치하지 않는 경우
+/// - 이미 존재하는 사용자인 경우
+/// - 데이터베이스 오류가 발생한 경우
+/// - 비밀번호 해시화 실패한 경우
 pub async fn signup_handler(
     State(pool): State<MySqlPool>,
     Json(signup_req): Json<SignupRequest>,
