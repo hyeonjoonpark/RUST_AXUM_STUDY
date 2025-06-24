@@ -5,7 +5,9 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use bcrypt::{hash, DEFAULT_COST};
+use bcrypt::{hash, verify, DEFAULT_COST};
+use jsonwebtoken::{encode, EncodingKey, Header};
+use std::env;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignupRequest {
@@ -17,6 +19,87 @@ pub struct SignupRequest {
 #[derive(Debug, Serialize)]
 pub struct SignupResponse {
     message: String,
+}
+
+// JWT Claims 구조체
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: String,
+    exp: usize,
+}
+
+// 로그인 요청 구조체
+#[derive(Debug, Deserialize)]
+pub struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+// 로그인 응답 구조체
+#[derive(Debug, Serialize)]
+pub struct LoginResponse {
+    token: String,
+}
+
+const JWT_EXPIRATION_HOURS: usize = 24;
+
+fn get_jwt_secret() -> String {
+    env::var("JWT_SECRET").unwrap_or_else(|_| "mysecretkey".to_string())
+}
+
+fn create_jwt(username: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize;
+    let exp = now + JWT_EXPIRATION_HOURS * 3600;
+    let claims = Claims {
+        sub: username.to_string(),
+        exp,
+    };
+    let secret = get_jwt_secret();
+    encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
+}
+
+/// 로그인 요청을 처리하는 핸들러 함수입니다.
+///
+/// # Arguments
+/// * `pool` - MySQL 데이터베이스 연결 풀
+/// * `login_req` - 로그인 요청 데이터
+///
+/// # Returns
+/// * `Ok(Json<LoginResponse>)` - 로그인 성공 시 JWT 토큰 반환
+/// * `Err((StatusCode, String))` - 실패 시 에러 코드와 에러 메시지
+pub async fn login_handler(
+    State(pool): State<MySqlPool>,
+    Json(login_req): Json<LoginRequest>,
+) -> Result<Json<LoginResponse>, (StatusCode, String)> {
+    // 사용자 조회
+    let user = sqlx::query!(
+        "SELECT username, password FROM users WHERE username = ?",
+        login_req.username
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "데이터베이스 오류".to_string()))?;
+
+    let user = match user {
+        Some(u) => u,
+        None => {
+            return Err((StatusCode::UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.".to_string()));
+        }
+    };
+
+    // 비밀번호 검증
+    let valid = verify(&login_req.password, &user.password)
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "비밀번호 검증 오류".to_string()))?;
+    if !valid {
+        return Err((StatusCode::UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.".to_string()));
+    }
+
+    // JWT 생성
+    let token = create_jwt(&user.username)
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "JWT 생성 오류".to_string()))?;
+
+    Ok(Json(LoginResponse { token }))
 }
 
 /// 회원가입 요청을 처리하는 핸들러 함수입니다.
