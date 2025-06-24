@@ -8,6 +8,7 @@ use crate::auth::auth::{signup_handler, login_handler};
 async fn hello_world() -> &'static str {
     "Hello, World!"
 }
+let BASE_API_URL = "/api/v1";
 
 #[tokio::main]
 async fn main() {
