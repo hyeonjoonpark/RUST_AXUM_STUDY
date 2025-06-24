@@ -8,6 +8,9 @@ use axum::{
 use bcrypt::{hash, verify, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use std::env;
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum::response::IntoResponse;
+use time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignupRequest {
@@ -38,7 +41,7 @@ pub struct LoginRequest {
 // 로그인 응답 구조체
 #[derive(Debug, Serialize)]
 pub struct LoginResponse {
-    token: String,
+    success_message: String,
 }
 
 const JWT_EXPIRATION_HOURS: usize = 24;
@@ -71,7 +74,7 @@ fn create_jwt(username: &str) -> Result<String, jsonwebtoken::errors::Error> {
 pub async fn login_handler(
     State(pool): State<MySqlPool>,
     Json(login_req): Json<LoginRequest>,
-) -> Result<Json<LoginResponse>, (StatusCode, String)> {
+) -> Result<impl IntoResponse, (StatusCode, String)> {
     // 사용자 조회
     let user = sqlx::query!(
         "SELECT username, password FROM users WHERE username = ?",
@@ -99,7 +102,18 @@ pub async fn login_handler(
     let token = create_jwt(&user.username)
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "JWT 생성 오류".to_string()))?;
 
-    Ok(Json(LoginResponse { token }))
+    // 쿠키 생성: 이름 access_token, Secure, Expired 6시간, HttpOnly, SameSite=Lax
+    let mut cookie = Cookie::new("access_token", token.clone());
+    cookie.set_http_only(true);
+    cookie.set_secure(true);
+    cookie.set_same_site(SameSite::Lax);
+    cookie.set_max_age(Duration::hours(6));
+    cookie.set_path("/");
+
+    let jar = CookieJar::new().add(cookie);
+    let success_message = format!("로그인에 성공하였습니다.");
+    let body = Json(LoginResponse { success_message });
+    Ok((jar, body))
 }
 
 /// 회원가입 요청을 처리하는 핸들러 함수입니다.
