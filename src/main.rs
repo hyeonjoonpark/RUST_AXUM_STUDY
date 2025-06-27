@@ -1,14 +1,8 @@
 mod db;
 mod auth;
+mod routes;
 
-use axum::{routing::{get, post}, Router};
 use crate::db::db_pool::create_db_pool;
-use crate::auth::auth::{signup_handler, login_handler};
-
-async fn hello_world() -> &'static str {
-    "Hello, World!"
-}
-let BASE_API_URL = "/api/v1";
 
 #[tokio::main]
 async fn main() {
@@ -17,11 +11,7 @@ async fn main() {
     let pool = create_db_pool(&database_url).await;
     println!("DB 연결에 성공하였습니다");
 
-    let app = Router::new()
-        .route("/", get(hello_world))
-        .route("/signup", post(signup_handler))
-        .route("/login", post(login_handler))
-        .with_state(pool);
+    let app = routes::create_router(pool);
 
     let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().unwrap();
     println!("서버 실행중: http://{}", addr);
