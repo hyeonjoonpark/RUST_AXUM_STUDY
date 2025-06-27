@@ -13,7 +13,9 @@ async fn main() {
 
     let app = routes::create_router(pool);
 
-    let addr: std::net::SocketAddr = "127.0.0.1:8080".parse().unwrap();
+    // SERVER_ADDR 환경변수에서 서버 주소를 읽어옵니다. 예: "127.0.0.1:8080"
+    let addr_str = std::env::var("SERVER_ADDR").expect("서버주소가 설정되지 않았습니다");
+    let addr: std::net::SocketAddr = addr_str.parse().expect("서버주소 형식이 올바르지 않습니다");
     println!("서버 실행중: http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
